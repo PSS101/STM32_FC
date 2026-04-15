@@ -23,6 +23,7 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include"imu.h"
+#include"nrf24.h"
 void DWT_Init(void);
 uint32_t micros();
 /* USER CODE END Includes */
@@ -55,6 +56,8 @@ struct imu_acc{
 /* Private variables ---------------------------------------------------------*/
 I2C_HandleTypeDef hi2c1;
 
+SPI_HandleTypeDef hspi1;
+
 /* USER CODE BEGIN PV */
 float tclk;
 volatile uint8_t imu_dr=0;
@@ -71,12 +74,16 @@ float gx,gy,dt;
 uint32_t t1,t2;
 uint32_t pt1,pt2;
 int c=0;
+
+uint8_t Addr[] = {0xEE,0xDD,0xCC,0xBB,0xAA};
+uint8_t data[] = "Hello\n";
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_I2C1_Init(void);
+static void MX_SPI1_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -140,6 +147,7 @@ int main(void)
   MX_GPIO_Init();
   MX_USB_DEVICE_Init();
   MX_I2C1_Init();
+  MX_SPI1_Init();
   /* USER CODE BEGIN 2 */
   HAL_Delay(1000);
   mpu6050_init();
@@ -148,6 +156,9 @@ int main(void)
   mpu6050_offsets(7.576351,6.097970,0.715911,0.008750,0.017756);
   mpu6050_interrupt_enable();
   DWT_Init();
+
+  nrf24_init();
+  nrf24_TX(Addr,10);
   HAL_Delay(1000);
 
 
@@ -156,9 +167,17 @@ int main(void)
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
 	int c=0;
+	nrf24_debug();
   while (1)
   {
-
+	  if(nrf24_Transmit(data)==1){
+		  uint8_t status = nrf24_Read_Reg(STATUS);
+		 	 printf("0x%02X\n",status);
+		  printf("data transmitted\n");
+	  }
+	  else{
+		  printf("failed to transmit\n");
+	  }
 	  if(imu_dr){
 		  a = mpu6050_read_acc();
 		  g = mpu6050_read_g();
@@ -181,7 +200,7 @@ int main(void)
 	 // pitch_pid = pid(pitch_kp,pitch_kd,pitch_ki,pitch_filter,pitch_prev,pitch_set,dt);
 
 	  if(c>=50){
-	  printf("%f %f %f\n",pitch_filter,roll_filter,dt);
+	 // printf("%f %f %f\n",pitch_filter,roll_filter,dt);
 	 // printf("%f %f \n",pitch_pid,roll_pid);
 	  c=0;
 	  }
@@ -193,8 +212,9 @@ int main(void)
 
 
   }
-  /* USER CODE END WHILE */
-  /* USER CODE BEGIN 3 */
+    /* USER CODE END WHILE */
+
+    /* USER CODE BEGIN 3 */
   /* USER CODE END 3 */
 }
 
@@ -279,6 +299,44 @@ static void MX_I2C1_Init(void)
 }
 
 /**
+  * @brief SPI1 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_SPI1_Init(void)
+{
+
+  /* USER CODE BEGIN SPI1_Init 0 */
+
+  /* USER CODE END SPI1_Init 0 */
+
+  /* USER CODE BEGIN SPI1_Init 1 */
+
+  /* USER CODE END SPI1_Init 1 */
+  /* SPI1 parameter configuration*/
+  hspi1.Instance = SPI1;
+  hspi1.Init.Mode = SPI_MODE_MASTER;
+  hspi1.Init.Direction = SPI_DIRECTION_2LINES;
+  hspi1.Init.DataSize = SPI_DATASIZE_8BIT;
+  hspi1.Init.CLKPolarity = SPI_POLARITY_LOW;
+  hspi1.Init.CLKPhase = SPI_PHASE_1EDGE;
+  hspi1.Init.NSS = SPI_NSS_SOFT;
+  hspi1.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_32;
+  hspi1.Init.FirstBit = SPI_FIRSTBIT_MSB;
+  hspi1.Init.TIMode = SPI_TIMODE_DISABLE;
+  hspi1.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
+  hspi1.Init.CRCPolynomial = 10;
+  if (HAL_SPI_Init(&hspi1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN SPI1_Init 2 */
+
+  /* USER CODE END SPI1_Init 2 */
+
+}
+
+/**
   * @brief GPIO Initialization Function
   * @param None
   * @retval None
@@ -298,6 +356,9 @@ static void MX_GPIO_Init(void)
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, GPIO_PIN_RESET);
 
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(GPIOB, CE_Pin|CSN_Pin|GPIO_PIN_13, GPIO_PIN_RESET);
+
   /*Configure GPIO pin : PC13 */
   GPIO_InitStruct.Pin = GPIO_PIN_13;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
@@ -305,11 +366,18 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 
-  /*Configure GPIO pin : PA0 */
-  GPIO_InitStruct.Pin = GPIO_PIN_0;
+  /*Configure GPIO pins : PA0 PA8 */
+  GPIO_InitStruct.Pin = GPIO_PIN_0|GPIO_PIN_8;
   GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
+  /*Configure GPIO pins : CE_Pin CSN_Pin PB13 */
+  GPIO_InitStruct.Pin = CE_Pin|CSN_Pin|GPIO_PIN_13;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
   /* EXTI interrupt init*/
   HAL_NVIC_SetPriority(EXTI0_IRQn, 0, 0);
