@@ -76,7 +76,7 @@ uint32_t pt1,pt2;
 int c=0;
 
 uint8_t Addr[] = {0xEE,0xDD,0xCC,0xBB,0xAA};
-uint8_t data[] = "Hello\n";
+uint8_t data[32] = {0};
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -150,15 +150,15 @@ int main(void)
   MX_SPI1_Init();
   /* USER CODE BEGIN 2 */
   HAL_Delay(1000);
-  mpu6050_init();
+ // mpu6050_init();
   HAL_Delay(250);
   //mpu6050_calib();
-  mpu6050_offsets(7.576351,6.097970,0.715911,0.008750,0.017756);
-  mpu6050_interrupt_enable();
+ // mpu6050_offsets(7.576351,6.097970,0.715911,0.008750,0.017756);
+//  mpu6050_interrupt_enable();
   DWT_Init();
 
-  nrf24_init();
-  nrf24_TX(Addr,10);
+  nrf24_init(nrf24_250Kbps,nrf24_PA_HIGH);
+  nrf24_RX(Addr,115);
   HAL_Delay(1000);
 
 
@@ -167,17 +167,22 @@ int main(void)
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
 	int c=0;
-	nrf24_debug();
+nrf24_debug();
   while (1)
   {
-	  if(nrf24_Transmit(data)==1){
-		  uint8_t status = nrf24_Read_Reg(STATUS);
-		 	 printf("0x%02X\n",status);
-		  printf("data transmitted\n");
-	  }
-	  else{
-		  printf("failed to transmit\n");
-	  }
+	  if(is_data_Ready(1)==1){
+		  nrf24_Receive(data);
+
+		 // printf("Data			");
+		  	for(int i=0;i<32;i++){
+		  		printf("%c ",data[i]);
+		  	}
+		  	printf("\n");
+		  }
+
+
+	  //exit(1);
+	  /*
 	  if(imu_dr){
 		  a = mpu6050_read_acc();
 		  g = mpu6050_read_g();
@@ -207,7 +212,8 @@ int main(void)
 	  c++;
 	  roll_prev = roll_filter;
 	  pitch_prev = pitch_filter;
-	  HAL_Delay(2);
+	  */
+	  HAL_Delay(100);
 
 
 

@@ -30,7 +30,7 @@
 #define RX_ADDR_P5 0x0F
 
 #define TX_ADDR 0x10
-
+#define RX_PW_P0 0x11
 #define RX_PW_P1 0x12
 #define RX_PW_P2 0x13
 #define RX_PW_P3 0x14
@@ -43,14 +43,30 @@
 
 #define R_REGISTER 0b00000000
 #define W_REGISTER 0b00100000
+
 #define R_RX_PAYLOAD 0b01100001
 #define W_TX_PAYLOAD 0b10100000
+
 #define FLUSH_TX 0b11100001
-#define FLUSH_RX 0b11100011
+#define FLUSH_RX 0b11100010
+
 #define  R_RX_PL_WID 0b01100000
+
 #define W_ACK_PAYLOAD 0b10101000
 #define W_TX_PAYLOAD_NOACK 0b10110000
+
 #define NOP 0b11111111
+
+
+#define nrf24_1Mbps 0b00
+#define nrf24_2Mbps 0b01
+#define nrf24_250Kbps 0b10
+
+
+#define nrf24_PA_MIN 0b00
+#define nrf24_PA_LOW 0b01
+#define nrf24_PA_HIGH 0b10
+#define nrf24_PA_MAX 0b11
 
 void CE_EN();
 void CE_DIS();
@@ -66,10 +82,14 @@ void nrf24_Read_Reg_Multi(uint8_t reg,uint8_t *data,int size);
 
 void nrf24_Write_Cmd(uint8_t cmd);
 void nrf24_Write_Cmd_Data(uint8_t cmd,uint8_t *data);
-void nrf24_init();
+void nrf24_init(uint8_t speed,uint8_t pa);
 
 void nrf24_TX(uint8_t*addr,uint8_t ch);
 uint8_t nrf24_Transmit(uint8_t *data);
+
+void nrf24_RX(uint8_t* addr,uint8_t ch);
+void nrf24_Receive(uint8_t *data);
+uint8_t is_data_Ready(uint8_t pipe);
 
 void nrf24_debug();
 #endif /* INC_NRF24_H_ */
